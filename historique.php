@@ -2,9 +2,6 @@
 /**
  * QuizMusic - Page d'historique
  * Jour 4 : Affichage de l'historique des scores depuis la BDD
- *
- * 📚 CONCEPT : Utilisation de la méthode User::getHistorique()
- * pour récupérer les scores avec jointure SQL
  */
 
 session_start();
@@ -19,8 +16,7 @@ if (!isset($_SESSION['user_id'])) {
 require_once 'classes/Database.php';
 require_once 'classes/User.php';
 
-// 📚 CONCEPT : Récupération de l'utilisateur depuis la session
-// On a besoin de l'objet User pour appeler getHistorique()
+// Récup de l'utilisateur depuis la session
 $user = new User(
     $_SESSION['user_id'],
     $_SESSION['user_pseudo'],
@@ -30,26 +26,30 @@ $user = new User(
 // 📚 Récupération de l'historique
 $historique = $user->getHistorique();
 
-// 📚 CONCEPT : Calcul des statistiques globales
-$totalParties = count($historique);
-$totalPoints = 0;
-$meilleurePerformance = 0;
+// 📚 Helpers sûrs
+$percent = function ($score, $total) {
+    $t = (int)$total;
+    return $t > 0 ? round(($score / $t) * 100) : 0;
+};
 
-foreach ($historique as $score) {
-    $totalPoints += $score['score'];
-    $pourcentage = ($score['score'] / $score['total_questions']) * 100;
-    if ($pourcentage > $meilleurePerformance) {
-        $meilleurePerformance = $pourcentage;
+// 📚 Calcul des statistiques globales
+$totalParties = count($historique);
+$totalPoints = 0;          // somme des scores (sur 5)
+$meilleurePerformance = 0; // meilleur % sur une partie
+
+foreach ($historique as $row) {
+    $totalPoints += (int)$row['score'];
+    $p = $percent((int)$row['score'], (int)($row['total_questions'] ?? 0));
+    if ($p > $meilleurePerformance) {
+        $meilleurePerformance = $p;
     }
 }
 
-// Calcul de la moyenne
+// Calcul de la moyenne par partie (affichée /5 dans le UI)
 $moyenne = $totalParties > 0 ? round($totalPoints / $totalParties, 1) : 0;
 ?>
-
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -69,11 +69,9 @@ $moyenne = $totalParties > 0 ? round($totalPoints / $totalParties, 1) : 0;
 
         <!-- En-tête -->
         <header class="text-center mb-12">
-            <h1 class="text-5xl font-bold text-white mb-4">
-                📊 Mon historique
-            </h1>
+            <h1 class="text-5xl font-bold text-white mb-4">📊 Mon historique</h1>
             <p class="text-xl text-purple-200">
-                Toutes vos performances, <?php echo htmlspecialchars($_SESSION['user_pseudo']); ?> !
+                Toutes vos performances, <?= htmlspecialchars($_SESSION['user_pseudo']) ?> !
             </p>
         </header>
 
@@ -82,21 +80,21 @@ $moyenne = $totalParties > 0 ? round($totalPoints / $totalParties, 1) : 0;
             <!-- Total de parties -->
             <div class="bg-white rounded-2xl shadow-xl p-6 text-center">
                 <div class="text-5xl mb-2">🎮</div>
-                <div class="text-4xl font-bold text-purple-600 mb-2"><?php echo $totalParties; ?></div>
+                <div class="text-4xl font-bold text-purple-600 mb-2"><?= $totalParties ?></div>
                 <div class="text-gray-600">Parties jouées</div>
             </div>
 
             <!-- Moyenne -->
             <div class="bg-white rounded-2xl shadow-xl p-6 text-center">
                 <div class="text-5xl mb-2">📈</div>
-                <div class="text-4xl font-bold text-blue-600 mb-2"><?php echo $moyenne; ?>/5</div>
+                <div class="text-4xl font-bold text-blue-600 mb-2"><?= $moyenne ?>/5</div>
                 <div class="text-gray-600">Score moyen</div>
             </div>
 
             <!-- Meilleure performance -->
             <div class="bg-white rounded-2xl shadow-xl p-6 text-center">
                 <div class="text-5xl mb-2">🏆</div>
-                <div class="text-4xl font-bold text-yellow-600 mb-2"><?php echo round($meilleurePerformance); ?>%</div>
+                <div class="text-4xl font-bold text-yellow-600 mb-2"><?= $meilleurePerformance ?>%</div>
                 <div class="text-gray-600">Meilleure performance</div>
             </div>
         </div>
@@ -104,9 +102,7 @@ $moyenne = $totalParties > 0 ? round($totalPoints / $totalParties, 1) : 0;
         <!-- Tableau d'historique -->
         <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
             <div class="bg-gradient-to-r from-purple-500 to-purple-600 p-6">
-                <h2 class="text-2xl font-bold text-white">
-                    📜 Historique détaillé
-                </h2>
+                <h2 class="text-2xl font-bold text-white">📜 Historique détaillé</h2>
             </div>
 
             <?php if (empty($historique)): ?>
@@ -122,7 +118,6 @@ $moyenne = $totalParties > 0 ? round($totalPoints / $totalParties, 1) : 0;
                     </a>
                 </div>
             <?php else: ?>
-                <!-- Tableau responsive -->
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-gray-100 border-b-2 border-gray-200">
@@ -135,12 +130,12 @@ $moyenne = $totalParties > 0 ? round($totalPoints / $totalParties, 1) : 0;
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($historique as $index => $score): ?>
-                                <?php
-                                // 📚 Calcul du pourcentage
-                                $pourcentage = ($score['score'] / $score['total_questions']) * 100;
+                        <?php foreach ($historique as $index => $score): ?>
+                            <?php
+                                // % sécurisé
+                                $pourcentage = $percent((int)$score['score'], (int)($score['total_questions'] ?? 0));
 
-                                // 📚 Détermination de la couleur selon le score
+                                // Couleur selon le % 
                                 if ($pourcentage >= 80) {
                                     $couleur = 'text-green-600 bg-green-50';
                                 } elseif ($pourcentage >= 60) {
@@ -151,58 +146,60 @@ $moyenne = $totalParties > 0 ? round($totalPoints / $totalParties, 1) : 0;
                                     $couleur = 'text-red-600 bg-red-50';
                                 }
 
-                                // 📚 Formatage de la date
-                                $date = new DateTime($score['date_jeu']);
-                                $dateFormatee = $date->format('d/m/Y à H:i');
+                                // Date safe
+                                $dateStr = $score['date_jeu'] ?? null;
+                                try {
+                                    $date = $dateStr ? new DateTime($dateStr) : null;
+                                    $dateFormatee = $date ? $date->format('d/m/Y à H:i') : '-';
+                                } catch (Throwable $e) {
+                                    $dateFormatee = '-';
+                                }
 
-                                // 📚 Formatage du temps
-                                $tempsAffiche = $score['temps_seconde'] ?
-                                    floor($score['temps_seconde'] / 60) . 'min ' . ($score['temps_seconde'] % 60) . 's' :
-                                    '-';
-                                ?>
-                                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors <?php echo $index % 2 === 0 ? 'bg-white' : 'bg-gray-50'; ?>">
-                                    <!-- Thème -->
-                                    <td class="p-4">
-                                        <div class="flex items-center gap-3">
-                                            <span class="text-2xl"><?php echo $score['emoji']; ?></span>
-                                            <span class="font-medium text-gray-800">
-                                                <?php echo htmlspecialchars($score['theme_titre']); ?>
-                                            </span>
-                                        </div>
-                                    </td>
-
-                                    <!-- Score -->
-                                    <td class="p-4 text-center">
-                                        <span class="text-xl font-bold text-gray-800">
-                                            <?php echo $score['score']; ?> / <?php echo $score['total_questions']; ?>
+                                $tsec = isset($score['temps_seconde']) ? (int)$score['temps_seconde'] : 0;
+                                $tempsAffiche = $tsec > 0 ? floor($tsec / 60) . 'min ' . ($tsec % 60) . 's' : '-';
+                            ?>
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors <?= $index % 2 === 0 ? 'bg-white' : 'bg-gray-50'; ?>">
+                                <!-- Thème -->
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-2xl"><?= htmlspecialchars($score['emoji'] ?? '🎵') ?></span>
+                                        <span class="font-medium text-gray-800">
+                                            <?= htmlspecialchars($score['theme_titre'] ?? '—') ?>
                                         </span>
-                                    </td>
+                                    </div>
+                                </td>
 
-                                    <!-- Pourcentage -->
-                                    <td class="p-4 text-center">
-                                        <span class="px-3 py-1 rounded-full font-semibold <?php echo $couleur; ?>">
-                                            <?php echo round($pourcentage); ?>%
-                                        </span>
-                                    </td>
+                                <!-- Score -->
+                                <td class="p-4 text-center">
+                                    <span class="text-xl font-bold text-gray-800">
+                                        <?= (int)$score['score'] ?> / <?= (int)($score['total_questions'] ?? 0) ?>
+                                    </span>
+                                </td>
 
-                                    <!-- Temps -->
-                                    <td class="p-4 text-center text-gray-600">
-                                        ⏱️ <?php echo $tempsAffiche; ?>
-                                    </td>
+                                <!-- Pourcentage -->
+                                <td class="p-4 text-center">
+                                    <span class="px-3 py-1 rounded-full font-semibold <?= $couleur; ?>">
+                                        <?= $pourcentage ?>%
+                                    </span>
+                                </td>
 
-                                    <!-- Date -->
-                                    <td class="p-4 text-gray-600">
-                                        <?php echo $dateFormatee; ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
+                                <!-- Temps -->
+                                <td class="p-4 text-center text-gray-600">
+                                    ⏱️ <?= $tempsAffiche; ?>
+                                </td>
+
+                                <!-- Date -->
+                                <td class="p-4 text-gray-600">
+                                    <?= $dateFormatee; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
             <?php endif; ?>
         </div>
 
-        <!-- Bouton de retour -->
         <div class="text-center mt-8">
             <a href="index.php"
                class="inline-block bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg">
@@ -211,5 +208,4 @@ $moyenne = $totalParties > 0 ? round($totalPoints / $totalParties, 1) : 0;
         </div>
     </div>
 </body>
-
 </html>

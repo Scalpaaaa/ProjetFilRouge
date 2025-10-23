@@ -27,13 +27,26 @@ if (isset($_SESSION['message_succes'])) {
 }
 
 // 📚 Chargement des questionnaires depuis la BDD
-// Au lieu d'avoir un tableau hard-codé, on les récupère de la BDD
 $pdo = Database::getConnexion();
+
+// ==================================================================
+// 📚 MODIFICATION EXERCICE 1 (REQUÊTE SQL)
+// On remplace la requête simple par une requête avec JOIN et COUNT
+// ==================================================================
 $stmt = $pdo->query("
-    SELECT *
-    FROM questionnaires
-    WHERE actif = 1
-    ORDER BY difficulte ASC
+    SELECT 
+        q.*, 
+        COUNT(qu.id) as nb_questions
+    FROM 
+        questionnaires q
+    LEFT JOIN 
+        questions qu ON q.id = qu.questionnaire_id
+    WHERE 
+        q.actif = 1
+    GROUP BY 
+        q.id
+    ORDER BY 
+        q.difficulte ASC
 ");
 $questionnaires = $stmt->fetchAll();
 
@@ -77,7 +90,6 @@ function afficherDifficulte($niveau) {
 <body class="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 min-h-screen">
     <div class="container mx-auto px-4 py-8 max-w-6xl">
 
-        <!-- 📚 NOUVEAU : Barre de navigation avec profil utilisateur -->
         <nav class="flex justify-between items-center mb-8">
             <div class="text-white">
                 <h2 class="text-xl font-semibold">
@@ -86,13 +98,15 @@ function afficherDifficulte($niveau) {
             </div>
 
             <div class="flex gap-4">
-                <!-- Lien vers l'historique -->
+            <a href="profile.php"
+           class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-all duration-200 backdrop-blur-sm">
+            👤 Mon Profil
+        </a>
                 <a href="historique.php"
                    class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-all duration-200 backdrop-blur-sm">
                     📊 Mon historique
                 </a>
 
-                <!-- Lien de déconnexion -->
                 <a href="logout.php"
                    class="bg-red-500/80 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-all duration-200">
                     🚪 Déconnexion
@@ -100,7 +114,6 @@ function afficherDifficulte($niveau) {
             </div>
         </nav>
 
-        <!-- 📚 NOUVEAU : Affichage du message de succès (inscription réussie) -->
         <?php if ($messageSucces): ?>
             <div class="bg-green-100 border border-green-400 text-green-700 px-6 py-4 rounded-xl mb-8 animate-pulse">
                 <div class="flex items-center">
@@ -110,7 +123,6 @@ function afficherDifficulte($niveau) {
             </div>
         <?php endif; ?>
 
-        <!-- En-tête avec titre principal -->
         <header class="text-center mb-12">
             <h1 class="text-5xl md:text-6xl font-bold text-white mb-4">
                 🎵 QuizMusic
@@ -123,7 +135,6 @@ function afficherDifficulte($niveau) {
             </p>
         </header>
 
-        <!-- Grille des questionnaires -->
         <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
             <?php
             // 📚 CONCEPT : Boucle sur les données de la BDD
@@ -132,13 +143,12 @@ function afficherDifficulte($niveau) {
             ?>
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden transform hover:scale-105 transition-all duration-300 hover:shadow-2xl">
 
-                <!-- En-tête colorée de la card -->
                 <div class="bg-gradient-to-r <?php echo $quiz['couleur']; ?> p-6 text-white">
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-4xl"><?php echo $quiz['emoji']; ?></span>
-                        <!-- 📚 NOTE : On pourrait afficher le nombre de questions depuis la BDD -->
+                        
                         <span class="text-sm font-medium bg-white/20 px-2 py-1 rounded-full">
-                            5 questions
+                            <?php echo $quiz['nb_questions']; ?> questions
                         </span>
                     </div>
                     <h3 class="text-2xl font-bold mb-2"><?php echo htmlspecialchars($quiz['titre']); ?></h3>
@@ -147,13 +157,11 @@ function afficherDifficulte($niveau) {
                     </div>
                 </div>
 
-                <!-- Contenu de la card -->
                 <div class="p-6">
                     <p class="text-gray-600 mb-6 leading-relaxed">
                         <?php echo htmlspecialchars($quiz['description']); ?>
                     </p>
 
-                    <!-- Bouton pour démarrer le quiz -->
                     <a href="quiz.php?theme=<?php echo urlencode($quiz['code']); ?>"
                         class="block w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl text-center transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
                         🎯 Commencer le quiz
@@ -163,7 +171,6 @@ function afficherDifficulte($niveau) {
             <?php endforeach; ?>
         </main>
 
-        <!-- Section informations -->
         <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8 text-center">
             <h2 class="text-2xl font-bold text-white mb-4">
                 🏆 Comment ça marche ?
@@ -188,7 +195,6 @@ function afficherDifficulte($niveau) {
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="text-center py-8">
         <p class="text-purple-300 text-sm">
             🎓 QuizMusic - Projet pédagogique PHP Jour 4 (Architecture POO + BDD)

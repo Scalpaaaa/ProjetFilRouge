@@ -50,7 +50,7 @@ class Database {
                 // 📚 PARAMÈTRES DE CONNEXION
                 // En production, ces valeurs devraient être dans un fichier .env
                 $username = "root";      // Utilisateur MySQL (par défaut "root" sur XAMPP)
-                $password = "";          // Mot de passe vide par défaut sur XAMPP
+                $password = "root";          // Mot de passe vide par défaut sur XAMPP
 
                 // 📚 CONCEPT : OPTIONS PDO pour la sécurité et le debug
                 $options = [

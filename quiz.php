@@ -20,6 +20,8 @@ require_once 'classes/QuestionTexte.php';
 require_once 'classes/QuestionImage.php';
 require_once 'classes/QuestionAudio.php';
 require_once 'classes/Quiz.php';
+// 🏅 Badges
+require_once 'classes/Badge.php';
 
 $theme = $_GET['theme'] ?? '';
 
@@ -39,7 +41,7 @@ try {
     // 📚 Traitement du formulaire
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reponsesUtilisateur = $_POST['reponses'] ?? [];
-        $tempsTotal = $_POST['temps_total'] ?? null;
+        $tempsTotal = isset($_POST['temps_total']) ? (int)$_POST['temps_total'] : null;
 
         // 📚 CONCEPT POO : Appel de méthode
         // Le calcul du score est encapsulé dans la classe Quiz
@@ -48,9 +50,17 @@ try {
         // 📚 Sauvegarde en BDD
         $quiz->sauvegarderScore($_SESSION['user_id'], $score, $tempsTotal);
 
+        // 🏅 Vérifie et attribue les badges après chaque partie
+        Badge::verifierEtAttribuer(
+            Database::getConnexion(),
+            (int)$_SESSION['user_id'],
+            (int)$score,
+            count($quiz->getQuestions())
+        );
+
         // Sauvegarde en session pour la page résultat
-        $_SESSION['dernier_score'] = $score;
-        $_SESSION['dernier_theme'] = $theme;
+        $_SESSION['dernier_score']   = $score;
+        $_SESSION['dernier_theme']   = $theme;
         $_SESSION['total_questions'] = count($quiz->getQuestions());
 
         header('Location: resultat.php');
@@ -98,7 +108,6 @@ try {
                     <!-- 📚 CONCEPT POO : POLYMORPHISME EN ACTION -->
                     <!-- Peu importe si c'est QuestionTexte, QuestionImage ou QuestionAudio -->
                     <!-- On appelle afficherHTML() et chaque objet génère son propre HTML -->
-                    <!-- C'est la MAGIE du polymorphisme ! -->
                     <?php echo $question->afficherHTML($index); ?>
                 <?php endforeach; ?>
 
@@ -121,5 +130,6 @@ try {
             document.getElementById('temps_total').value = tempsTotal;
         });
     </script>
+    
 </body>
 </html>
